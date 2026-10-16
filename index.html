@@ -1,0 +1,300 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Budget abdoul</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+        }
+
+        h1 {
+            color: #166534;
+        }
+
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .card {
+            flex: 1;
+            min-width: 140px;
+            background: white;
+            padding: 18px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #00000010;
+        }
+
+        .card p {
+            font-size: 20px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
+        .form, .history {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        input, select, button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 12px;
+            margin: 7px 0;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+
+        input, select {
+            border: 1px solid #cbd5e1;
+        }
+
+        button {
+            border: none;
+            background: #15803d;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #166534;
+        }
+
+        .delete {
+            width: auto;
+            padding: 7px 10px;
+            background: #dc2626;
+        }
+
+        li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+            overflow-wrap: anywhere;
+        }
+
+        .income {
+            color: #15803d;
+        }
+
+        .expense {
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <h1>💰 Mon Budget</h1>
+    <p>Gérez vos revenus et vos dépenses facilement.</p>
+
+    <div class="cards">
+        <div class="card">
+            Revenus
+            <p id="income">0 FBU</p>
+        </div>
+
+        <div class="card">
+            Dépenses
+            <p id="expenses">0 FBU</p>
+        </div>
+
+        <div class="card">
+            Solde
+            <p id="balance">0 FBU</p>
+        </div>
+    </div>
+
+    <div class="form">
+        <h2>Ajouter une opération</h2>
+
+        <form id="budgetForm">
+            <label for="type">Type d'opération</label>
+            <select id="type" required>
+                <option value="income">Revenu (argent reçu)</option>
+                <option value="expense">Dépense (argent utilisé)</option>
+            </select>
+
+            <label for="description">Description</label>
+            <input id="description" type="text"
+                   placeholder="Ex. Salaire, transport, nourriture"
+                   required maxlength="100">
+
+            <label for="amount">Montant (FBU)</label>
+            <input id="amount" type="number"
+                   placeholder="Ex. 50000"
+                   min="1" step="1" required>
+
+            <label for="date">Date</label>
+            <input id="date" type="date" required>
+
+            <button type="submit">Ajouter l'opération</button>
+        </form>
+    </div>
+
+    <div class="history">
+        <h2>Historique des opérations</h2>
+        <ul id="history"></ul>
+        <button type="button" id="clearAll"
+                style="background:#dc2626">
+            Effacer toutes les opérations
+        </button>
+    </div>
+
+</div>
+
+<script>
+    const form = document.getElementById("budgetForm");
+    const typeInput = document.getElementById("type");
+    const descriptionInput = document.getElementById("description");
+    const amountInput = document.getElementById("amount");
+    const dateInput = document.getElementById("date");
+    const historyList = document.getElementById("history");
+
+    let operations = [];
+
+    try {
+        operations = JSON.parse(
+            localStorage.getItem("monBudgetOperations") || "[]"
+        );
+
+        if (!Array.isArray(operations)) {
+            operations = [];
+        }
+    } catch {
+        operations = [];
+    }
+
+    dateInput.value = new Date().toLocaleDateString("en-CA");
+
+    function formatMoney(amount) {
+        return new Intl.NumberFormat("fr-FR", {
+            maximumFractionDigits: 0
+        }).format(amount) + " FBU";
+    }
+
+    function saveOperations() {
+        localStorage.setItem(
+            "monBudgetOperations",
+            JSON.stringify(operations)
+        );
+    }
+
+    function render() {
+        const income = operations
+            .filter(op => op.type === "income")
+            .reduce((sum, op) => sum + op.amount, 0);
+
+        const expenses = operations
+            .filter(op => op.type === "expense")
+            .reduce((sum, op) => sum + op.amount, 0);
+
+        document.getElementById("income").textContent =
+            formatMoney(income);
+
+        document.getElementById("expenses").textContent =
+            formatMoney(expenses);
+
+        document.getElementById("balance").textContent =
+            formatMoney(income - expenses);
+
+        historyList.replaceChildren();
+
+        if (operations.length === 0) {
+            const message = document.createElement("li");
+            message.textContent = "Aucune opération pour le moment.";
+            historyList.appendChild(message);
+            return;
+        }
+
+        [...operations].reverse().forEach(op => {
+            const item = document.createElement("li");
+            const label = document.createElement("span");
+            const removeButton = document.createElement("button");
+
+            label.className = op.type === "income"
+                ? "income" : "expense";
+
+            label.textContent =
+                (op.type === "income" ? "+ " : "- ") +
+                formatMoney(op.amount) + " — " +
+                op.description + " (" + op.date + ") ";
+
+            removeButton.textContent = "Supprimer";
+            removeButton.className = "delete";
+            removeButton.type = "button";
+
+            removeButton.addEventListener("click", () => {
+                operations = operations.filter(
+                    entry => entry.id !== op.id
+                );
+                saveOperations();
+                render();
+            });
+
+            item.append(label, removeButton);
+            historyList.appendChild(item);
+        });
+    }
+
+    form.addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        const description = descriptionInput.value.trim();
+        const amount = Number(amountInput.value);
+        const date = dateInput.value;
+
+        if (!description || !Number.isSafeInteger(amount) ||
+            amount <= 0 || !date) {
+            alert("Veuillez vérifier les informations saisies.");
+            return;
+        }
+
+        operations.push({
+            id: Date.now().toString() +
+                Math.random().toString(36).slice(2),
+            type: typeInput.value,
+            description: description,
+            amount: amount,
+            date: date
+        });
+
+        saveOperations();
+        render();
+
+        descriptionInput.value = "";
+        amountInput.value = "";
+        descriptionInput.focus();
+    });
+
+    document.getElementById("clearAll").addEventListener(
+        "click", function() {
+            if (confirm("Voulez-vous vraiment tout effacer ?")) {
+                operations = [];
+                saveOperations();
+                render();
+            }
+        }
+    );
+
+    render();
+</script>
+</body>
+</html>
